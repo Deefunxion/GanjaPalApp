@@ -311,7 +311,7 @@ const ZoneGrid = ({ zone, plants, onPlantSelect, onPlantDelete, selectedPlant })
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div className="text-center">
                   <p className="text-muted-foreground">Avg Total Score</p>
-                  <p className="font-semibold text-green-600">
+                <p className="font-semibold text-green-600">
                     {(zonePlants.reduce((sum, p) => sum + p.totalMediumValue, 0) / zonePlants.length).toFixed(3)}
                   </p>
                 </div>
@@ -336,11 +336,13 @@ const ZoneGrid = ({ zone, plants, onPlantSelect, onPlantDelete, selectedPlant })
   }
 
   if (config.layout === 'planter') {
-    // 4-3-4 layout: 11 slots
-    // Slot order: [0-3] top, [4-6] middle, [7-10] bottom
-    const slots = Array(11).fill(null);
+    const rowLayout = config.rowLayout || [4, 4, 4];
+    const totalSlots = rowLayout.reduce((sum, n) => sum + n, 0);
+    const slots = Array(totalSlots).fill(null);
     zonePlants.forEach((plant, i) => {
-      slots[i] = plant;
+      if (i < totalSlots) {
+        slots[i] = plant;
+      }
     });
     return (
       <Card className="mb-6">
@@ -349,71 +351,38 @@ const ZoneGrid = ({ zone, plants, onPlantSelect, onPlantDelete, selectedPlant })
             <MapPin className="w-4 h-4" />
             {config.name}
             <Badge variant="outline" className="ml-auto">
-              {zonePlants.length}/11
+              {zonePlants.length}/{config.capacity}
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2">
-            {/* Top row: 4 slots */}
-            <div className="flex gap-2">
-              {[0,1,2,3].map(idx => (
-                <div key={idx} className="flex-1 min-w-0">
-                  {slots[idx] ? (
-                    <PlantItem 
-                      plant={slots[idx]} 
-                      onSelect={onPlantSelect}
-                      onDelete={onPlantDelete}
-                      isSelected={selectedPlant?.id === slots[idx].id}
-                    />
-                  ) : (
-                    <div className="aspect-square min-h-[80px] w-full border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center hover:border-gray-300 transition-colors">
-                      <Plus className="w-4 h-4 text-gray-400" />
-                    </div>
-                  )}
+            {rowLayout.map((count, rowIdx) => {
+              const start = rowLayout.slice(0, rowIdx).reduce((a, b) => a + b, 0);
+              return (
+                <div className="flex gap-2" key={rowIdx}>
+                  {Array.from({ length: count }).map((_, i) => {
+                    const idx = start + i;
+                    return (
+                      <div key={idx} className="flex-1 min-w-0">
+                        {slots[idx] ? (
+                          <PlantItem
+                            plant={slots[idx]}
+                            onSelect={onPlantSelect}
+                            onDelete={onPlantDelete}
+                            isSelected={selectedPlant?.id === slots[idx].id}
+                          />
+                        ) : (
+                          <div className="aspect-square min-h-[80px] w-full border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center hover:border-gray-300 transition-colors">
+                            <Plus className="w-4 h-4 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-            {/* Middle row: 3 slots, centered */}
-            <div className="flex gap-2 justify-center">
-              <div className="flex-1" />
-              {[4,5,6].map(idx => (
-                <div key={idx} className="flex-1 min-w-0 max-w-[120px]">
-                  {slots[idx] ? (
-                    <PlantItem 
-                      plant={slots[idx]} 
-                      onSelect={onPlantSelect}
-                      onDelete={onPlantDelete}
-                      isSelected={selectedPlant?.id === slots[idx].id}
-                    />
-                  ) : (
-                    <div className="aspect-square min-h-[80px] w-full border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center hover:border-gray-300 transition-colors">
-                      <Plus className="w-4 h-4 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div className="flex-1" />
-            </div>
-            {/* Bottom row: 4 slots */}
-            <div className="flex gap-2">
-              {[7,8,9,10].map(idx => (
-                <div key={idx} className="flex-1 min-w-0">
-                  {slots[idx] ? (
-                    <PlantItem 
-                      plant={slots[idx]} 
-                      onSelect={onPlantSelect}
-                      onDelete={onPlantDelete}
-                      isSelected={selectedPlant?.id === slots[idx].id}
-                    />
-                  ) : (
-                    <div className="aspect-square min-h-[80px] w-full border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center hover:border-gray-300 transition-colors">
-                      <Plus className="w-4 h-4 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
           {/* Per-Tray Analytics Summary */}
           {zonePlants.length > 0 && (
@@ -439,44 +408,7 @@ const ZoneGrid = ({ zone, plants, onPlantSelect, onPlantDelete, selectedPlant })
                 </div>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  return null;
-};
-
-const GrowDeck = () => {
-  const [plants, setPlants] = useState([]);
-  const [selectedPlant, setSelectedPlant] = useState(null);
-  const [activeZone, setActiveZone] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
-  // Load plants from storage on component mount
-  useEffect(() => {
-    const storedPlants = AppStorage.getPlantProfiles();
-    if (storedPlants.length > 0) {
-      setPlants(storedPlants);
-    } else {
-      // Use sample data if no stored data exists
-      setPlants(samplePlants);
-      AppStorage.savePlantProfiles(samplePlants);
-    }
-  }, []);
-
-  const handlePlantSelect = (plant) => {
-    setSelectedPlant(plant);
-  };
-
-  const handlePlantDelete = (plantId) => {
-    const updatedPlants = plants.filter(p => p.id !== plantId);
-    setPlants(updatedPlants);
-    AppStorage.savePlantProfiles(updatedPlants);
-    if (selectedPlant?.id === plantId) {
+@@ -478,52 +449,52 @@ const GrowDeck = () => {
       setSelectedPlant(null);
     }
   };
@@ -502,8 +434,8 @@ const GrowDeck = () => {
     return matchesZone && matchesSearch;
   });
 
-  const zonesToShow = activeZone === 'all' 
-    ? Object.keys(ZONE_TYPES) 
+  const zonesToShow = activeZone === 'all'
+    ? Object.values(ZONE_TYPES)
     : [activeZone];
 
   return (
@@ -527,6 +459,8 @@ const GrowDeck = () => {
           </div>
           <Button variant="outline" size="sm">
             <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
             Filter
           </Button>
           <Button onClick={() => setShowAddDialog(true)} size="sm">
