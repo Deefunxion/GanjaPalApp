@@ -174,7 +174,7 @@ export const samplePlants = [
     symmetry: 0.95,
     totalMediumValue: 0.822222,
     trainingMethods: [TRAINING_METHODS.TOPPING],
-    trainingHistory: [],
+     trainingHistory: [],
     isAutoflower: false,
     isKeeperPheno: true,
     isCandidateForCloning: true,
@@ -198,8 +198,8 @@ export const zoneConfigs = {
   [ZONE_TYPES.ZARDINIERA]: {
     name: 'Ζαρντινιέρα',
     layout: 'planter',
-    // 4-3-4 layout: 3 rows, 4 in row 0, 3 in row 1 (centered), 4 in row 2
     gridSize: { rows: 3, cols: 4 },
+    rowLayout: [4, 3, 4],
     capacity: 11,
     color: 'zone-zardiniera'
   },
